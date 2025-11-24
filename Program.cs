@@ -60,7 +60,7 @@ builder.Services.AddAuthorizationBuilder()
   .AddPolicy("create_and_delete_user", policy =>
         policy
             .RequireRole("admin")
-            .RequireClaim("scope", "create_user delete_user"));
+            .RequireClaim("scope", "create_and_delete_user"));
 builder.Services.AddAuthorizationBuilder()
   .AddPolicy("editor_user", policy =>
         policy
@@ -71,7 +71,16 @@ builder.Services.AddAuthorizationBuilder()
         policy
             .RequireRole("admin", "editor", "viewer")
             .RequireClaim("scope", "view_user"));
-
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("viewer_todoitem", policy =>
+        policy
+            .RequireRole("admin", "editor", "viewer")
+            .RequireClaim("scope", "view_todoitem"));
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("crud_todoitem", policy =>
+        policy
+            .RequireRole("editor")
+            .RequireClaim("scope", "crud_todoitem"));
 
 
 // Configure CORS for frontend (important for SPA)
@@ -166,7 +175,7 @@ app.MapGet("/1", () => Results.Redirect("/"));
 TodoEndpoints.MapTodoEndpoints(app);
 UserEndPoints.MapUserEndpoints(app);
 
-// 管理端点方法
+// map the endpoints
 app.Urls.Add("http://localhost:3000");
 app.Urls.Add("http://localhost:4000");
 app.Run();

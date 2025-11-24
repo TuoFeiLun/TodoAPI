@@ -8,12 +8,12 @@ public static class TodoEndpoints
     {
         var todoItems = app.MapGroup("/todoitems");
 
-        todoItems.MapGet("/", [Authorize("admin_and_editor")] () => TodoCrud.GetAllTodos);
-        todoItems.MapGet("/complete", [Authorize("editor_user")] () => TodoCrud.GetCompleteTodos);
-        todoItems.MapGet("/{id}", [Authorize("editor_user")] () => TodoCrud.GetTodo);
-        todoItems.MapPost("/", [Authorize("create_and_delete_user")] () => TodoCrud.CreateTodo);
-        todoItems.MapPut("/{id}", [Authorize("editor_user")] () => TodoCrud.UpdateTodo);
-        todoItems.MapDelete("/{id}", [Authorize("create_and_delete_user")] () => TodoCrud.DeleteTodo);
+        todoItems.MapGet("/", [Authorize("viewer_todoitem")] () => TodoCrud.GetAllTodos);
+        todoItems.MapGet("/complete", [Authorize("viewer_todoitem")] () => TodoCrud.GetCompleteTodos);
+        todoItems.MapGet("/{id}", [Authorize("viewer_todoitem")] () => TodoCrud.GetTodo);
+        todoItems.MapPost("/", [Authorize("crud_todoitem")] () => TodoCrud.CreateTodo);
+        todoItems.MapPut("/{id}", [Authorize("crud_todoitem")] () => TodoCrud.UpdateTodo);
+        todoItems.MapDelete("/{id}", [Authorize("crud_todoitem")] () => TodoCrud.DeleteTodo);
 
 
         var adminItems = app.MapGroup("/admin/todoitems");

@@ -33,7 +33,6 @@ public class LoginController
     }
 
 
-    // RULE TEST OK
     // Login method - authenticate user with hashed password verification
     public static async Task<IResult> Login(User user, UserDb db)
     {
@@ -51,17 +50,20 @@ public class LoginController
                 new Claim(ClaimTypes.Email, existingUser.Email ?? ""),
                 new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString()),
                 new Claim(ClaimTypes.Role, existingUser.Role),
-                new Claim("scope", "view_user")
+                new Claim("scope", "view_user"),
+                new Claim("scope", "view_todoitem")
             };
             if (existingUser.Role == "admin")
             {
-                claims.Add(new Claim("scope", "create_user delete_user"));
+                claims.Add(new Claim("scope", "create_and_delete_user"));
                 claims.Add(new Claim("scope", "update_user"));
+
 
             }
             else if (existingUser.Role == "editor")
             {
                 claims.Add(new Claim("scope", "update_user"));
+                claims.Add(new Claim("scope", "crud_todoitem"));
             }
 
             var token = GenerateJwtToken(claims);
