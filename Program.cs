@@ -15,10 +15,16 @@ builder.Services.AddDbContext<TodoDb>(opt => opt.UseInMemoryDatabase("TodoList")
 builder.Services.AddDbContext<UserDb>(opt => opt.UseInMemoryDatabase("UserList"));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+// Add global exception handler
+builder.Services.AddExceptionHandler<MyApi.Middleware.GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.WriteIndented = true;
     options.SerializerOptions.IncludeFields = true;
+    options.SerializerOptions.AllowTrailingCommas = false;  // Allow trailing commas in JSON
+    options.SerializerOptions.ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip;  // Allow comments in JSON
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -50,8 +56,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Configure Authorization policy
-builder.Services.AddAuthorization(o => o.AddPolicy("AdminsOnly",
-                                  b => b.RequireClaim("admin", "true")));
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("create_and_delete_user", policy =>
+        policy
+            .RequireRole("admin")
+            .RequireClaim("scope", "create_user delete_user"));
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("editor_user", policy =>
+        policy
+            .RequireRole("admin", "editor")
+            .RequireClaim("scope", "update_user"));
+builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("viewer_user", policy =>
+        policy
+            .RequireRole("admin", "editor", "viewer")
+            .RequireClaim("scope", "view_user"));
+
+
 
 // Configure CORS for frontend (important for SPA)
 builder.Services.AddCors(options =>
@@ -67,7 +88,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// RULE TEST OK
+
 // Seed test users for development
 using (var scope = app.Services.CreateScope())
 {
@@ -80,14 +101,16 @@ using (var scope = app.Services.CreateScope())
     if (!userDb.Users.Any())
     {
         userDb.Users.AddRange(
-            new MyApi.Model.User.User("Admin", "Admin123!", "admin@test.com", true),
-            new MyApi.Model.User.User("Regular", "User123!", "user@test.com", false),
-            new MyApi.Model.User.User("Test", "Test123!", "test@test.com", false)
+            new MyApi.Model.User.User("Admin", "User123!", "user@test.com", "admin", true),
+            new MyApi.Model.User.User("Regular", "User123!", "user@test.com", "editor", false),
+            new MyApi.Model.User.User("Test", "User123!", "user@test.com", "viewer", false)
         );
         userDb.SaveChanges();
     }
 }
 
+// Use global exception handler (must be early in pipeline)
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
@@ -113,7 +136,7 @@ app.MapPost("/login", LoginController.Login);
 
 
 // Check who is logged in
-app.MapGet("/whoami", [Authorize] (HttpContext context) =>
+app.MapGet("/whoami", (HttpContext context) =>
 {
     var user = context.User;
     var claims = user.Claims.Select(c => new { c.Type, c.Value }).ToList();
@@ -126,8 +149,8 @@ app.MapGet("/whoami", [Authorize] (HttpContext context) =>
 });
 
 // Admin-only endpoint
-app.MapGet("/admin", [Authorize("AdminsOnly")] () =>
-    "The /admin endpoint is for admins only. You have the 'admin=true' claim!");
+app.MapGet("/admin", () =>
+    "The /admin endpoint is for admins only. You have the 'admin=true' claim!").RequireAuthorization("create_and_delete_user");
 
 // Any authenticated user can access
 app.MapGet("/protected", [Authorize] (HttpContext context) =>

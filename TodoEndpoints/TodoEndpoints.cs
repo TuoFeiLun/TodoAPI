@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using MyApi.Controller;
 namespace MinAPISeparateFile;
 
@@ -7,12 +8,12 @@ public static class TodoEndpoints
     {
         var todoItems = app.MapGroup("/todoitems");
 
-        todoItems.MapGet("/", TodoCrud.GetAllTodos);
-        todoItems.MapGet("/complete", TodoCrud.GetCompleteTodos);
-        todoItems.MapGet("/{id}", TodoCrud.GetTodo);
-        todoItems.MapPost("/", TodoCrud.CreateTodo);
-        todoItems.MapPut("/{id}", TodoCrud.UpdateTodo);
-        todoItems.MapDelete("/{id}", TodoCrud.DeleteTodo);
+        todoItems.MapGet("/", [Authorize("admin_and_editor")] () => TodoCrud.GetAllTodos);
+        todoItems.MapGet("/complete", [Authorize("editor_user")] () => TodoCrud.GetCompleteTodos);
+        todoItems.MapGet("/{id}", [Authorize("editor_user")] () => TodoCrud.GetTodo);
+        todoItems.MapPost("/", [Authorize("create_and_delete_user")] () => TodoCrud.CreateTodo);
+        todoItems.MapPut("/{id}", [Authorize("editor_user")] () => TodoCrud.UpdateTodo);
+        todoItems.MapDelete("/{id}", [Authorize("create_and_delete_user")] () => TodoCrud.DeleteTodo);
 
 
         var adminItems = app.MapGroup("/admin/todoitems");

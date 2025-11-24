@@ -9,32 +9,76 @@ namespace MyApi.Controller;
 
 public class UserController
 {
+    // RULE TEST OK
+    // Get all users without password information
     public static async Task<IResult> GetAllUsers(UserDb db)
     {
-        return TypedResults.Ok(await db.Users.Select(x => new User(x.Name, x.Password ?? "", x.Email ?? "", x.IsAdmin)).ToArrayAsync());
+        var users = await db.Users.Select(x => new UserResponseDto
+        {
+            Id = x.Id,
+            Name = x.Name,
+            Email = x.Email,
+            Role = x.Role,
+            IsAdmin = x.IsAdmin,
+            CreatedAt = x.CreatedAt,
+            UpdatedAt = x.UpdatedAt
+        }).ToArrayAsync();
+
+        return TypedResults.Ok(users);
     }
 
+    // RULE TEST OK
+    // Get single user without password information
     public static async Task<IResult> GetUser(int id, UserDb db)
     {
-        return await db.Users.FindAsync(id)
-            is User user
-                ? TypedResults.Ok(user)
-                : TypedResults.NotFound();
+        var user = await db.Users.FindAsync(id);
+        if (user is null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var userDto = new UserResponseDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            Role = user.Role,
+            IsAdmin = user.IsAdmin,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        };
+
+        return TypedResults.Ok(userDto);
     }
     public static async Task<IResult> CreateUser(User user, UserDb db)
     {
-        db.Users.Add(user);
-        await db.SaveChangesAsync();
-        return TypedResults.Created($"/users/{user.Id}", user);
+        try
+        {
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            return TypedResults.Created($"/users/{user.Id}", user);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            return TypedResults.BadRequest(new { message = "Error create user" });
+        }
     }
     public static async Task<IResult> UpdateUser(int id, User user, UserDb db)
     {
         var existingUser = await db.Users.FindAsync(id);
         if (existingUser is null) return TypedResults.NotFound();
-        existingUser.Name = user.Name;
-        existingUser.Email = user.Email;
-        existingUser.Password = user.Password;
-        existingUser.IsAdmin = user.IsAdmin;
+        if (user.Name != null)
+        {
+            existingUser.Name = user.Name;
+        }
+        if (user.Email != null)
+        {
+            existingUser.Email = user.Email;
+        }
+
+
+
         await db.SaveChangesAsync();
         return TypedResults.NoContent();
     }
@@ -122,6 +166,7 @@ public class UserController
             name = user.Name,
             email = user.Email,
             isAdmin = user.IsAdmin,
+            role = user.Role,
             createdAt = user.CreatedAt,
             updatedAt = user.UpdatedAt
         });

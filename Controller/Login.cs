@@ -37,7 +37,7 @@ public class LoginController
     {
         // Find user by email and password using Where clause, not FindAsync
         var existingUser = await db.Users
-            .Where(u => u.Email == user.Email && u.Password == user.Password)
+            .Where(u => u.Email == user.Email && u.Password == user.Password && u.Name == user.Name)
             .FirstOrDefaultAsync();
 
         if (existingUser is not null)
@@ -46,9 +46,20 @@ public class LoginController
             {
                 new Claim(ClaimTypes.Name, existingUser.Name),
                 new Claim(ClaimTypes.Email, existingUser.Email ?? ""),
-                new Claim("admin", existingUser.IsAdmin.ToString().ToLower()),
-                new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString())
+                new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString()),
+                new Claim(ClaimTypes.Role, existingUser.Role),
+                new Claim("scope", "view_user")
             };
+            if (existingUser.Role == "admin")
+            {
+                claims.Add(new Claim("scope", "create_user delete_user"));
+                claims.Add(new Claim("scope", "update_user"));
+
+            }
+            else if (existingUser.Role == "editor")
+            {
+                claims.Add(new Claim("scope", "update_user"));
+            }
 
             var token = GenerateJwtToken(claims);
             return Results.Ok(new
