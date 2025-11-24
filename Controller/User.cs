@@ -76,7 +76,7 @@ public class UserController
         // Verify old password
         if (user.Password != request.OldPassword)
         {
-            return TypedResults.Unauthorized();
+            return TypedResults.UnprocessableEntity(new { message = "Old password is incorrect" });
         }
 
         // Update password
