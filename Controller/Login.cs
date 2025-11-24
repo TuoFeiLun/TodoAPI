@@ -14,7 +14,7 @@ public class LoginController
 
 
     // Helper function to generate JWT token
-    private static string GenerateJwtToken(string username, IEnumerable<Claim> claims)
+    private static string GenerateJwtToken(IEnumerable<Claim> claims)
     {
         var securityKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(JwtSettings.SecretKey));
@@ -50,7 +50,7 @@ public class LoginController
                 new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString())
             };
 
-            var token = GenerateJwtToken(existingUser.Name, claims);
+            var token = GenerateJwtToken(claims);
             return Results.Ok(new
             {
                 tokenType = "Bearer",
