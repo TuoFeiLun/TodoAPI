@@ -5,6 +5,7 @@ using MyApi.Model.User;
 using MyApi.Database;
 using System.Security.Claims;
 using MyApi.Model.ChangePasswordRequest;
+using MyApi.Services;
 namespace MyApi.Controller;
 
 public class UserController
@@ -50,26 +51,44 @@ public class UserController
 
         return TypedResults.Ok(userDto);
     }
+
+    // Create new user with hashed password - never store plain text passwords
     public static async Task<IResult> CreateUser(User user, UserDb db)
     {
         try
         {
-            //check name and email is not already in the database
+            // Check name and email is not already in the database
             if (db.Users.Any(x => x.Name == user.Name || x.Email == user.Email))
             {
                 return TypedResults.BadRequest(new { message = "Name or email already exists" });
             }
-            else
+
+            // Hash the password before saving - security best practice
+            user.Password = PasswordHashService.HashPassword(user.Password);
+            user.CreatedAt = DateTime.Now;
+            user.UpdatedAt = DateTime.Now;
+
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+
+            // Return user info without password
+            var userResponse = new UserResponseDto
             {
-                db.Users.Add(user);
-                await db.SaveChangesAsync();
-                return TypedResults.Created($"/users/{user.Id}", user);
-            }
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                Role = user.Role,
+                IsAdmin = user.IsAdmin,
+                CreatedAt = user.CreatedAt,
+                UpdatedAt = user.UpdatedAt
+            };
+
+            return TypedResults.Created($"/users/{user.Id}", userResponse);
         }
         catch (Exception ex)
         {
             Console.WriteLine(ex.Message);
-            return TypedResults.BadRequest(new { message = "Error create user" });
+            return TypedResults.BadRequest(new { message = "Error creating user" });
         }
     }
     public static async Task<IResult> UpdateUser(int id, User user, UserDb db)
@@ -123,14 +142,14 @@ public class UserController
             return TypedResults.NotFound("User not found");
         }
 
-        // Verify old password
-        if (user.Password != request.OldPassword)
+        // Verify old password using BCrypt hash comparison
+        if (!PasswordHashService.VerifyPassword(request.OldPassword, user.Password))
         {
             return TypedResults.UnprocessableEntity(new { message = "Old password is incorrect" });
         }
 
-        // Update password
-        user.Password = request.NewPassword;
+        // Hash new password and update
+        user.Password = PasswordHashService.HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.Now;
         await db.SaveChangesAsync();
 

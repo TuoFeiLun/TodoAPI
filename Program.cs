@@ -97,13 +97,13 @@ using (var scope = app.Services.CreateScope())
     // Ensure database is created
     userDb.Database.EnsureCreated();
 
-    // Add test users if they don't exist
+    // Add test users with hashed passwords if they don't exist
     if (!userDb.Users.Any())
     {
         userDb.Users.AddRange(
-            new MyApi.Model.User.User("Admin", "User123!", "user@test.com", "admin", true),
-            new MyApi.Model.User.User("Regular", "User123!", "user@test.com", "editor", false),
-            new MyApi.Model.User.User("Test", "User123!", "user@test.com", "viewer", false)
+            new MyApi.Model.User.User("Admin", MyApi.Services.PasswordHashService.HashPassword("Admin123!"), "admin@test.com", "admin", true),
+            new MyApi.Model.User.User("Regular", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user@test.com", "editor", false),
+            new MyApi.Model.User.User("Test", MyApi.Services.PasswordHashService.HashPassword("Test123!"), "test@test.com", "viewer", false)
         );
         userDb.SaveChanges();
     }

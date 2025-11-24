@@ -7,6 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using MyApi.Config;
 using System.Text;
+using MyApi.Services;
 namespace MyApi.Controller;
 
 public class LoginController
@@ -32,15 +33,17 @@ public class LoginController
     }
 
 
-    // Login method - authenticate user by email and password
+    // RULE TEST OK
+    // Login method - authenticate user with hashed password verification
     public static async Task<IResult> Login(User user, UserDb db)
     {
-        // Find user by email and password using Where clause, not FindAsync
+        // Find user by email first
         var existingUser = await db.Users
-            .Where(u => u.Email == user.Email && u.Password == user.Password && u.Name == user.Name)
+            .Where(u => u.Email == user.Email)
             .FirstOrDefaultAsync();
 
-        if (existingUser is not null)
+        // Verify password using BCrypt hash comparison
+        if (existingUser is not null && PasswordHashService.VerifyPassword(user.Password, existingUser.Password))
         {
             var claims = new List<Claim>
             {
