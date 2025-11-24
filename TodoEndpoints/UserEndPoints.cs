@@ -12,7 +12,7 @@ public static class UserEndPoints
 
         userItems.MapGet("/", [Authorize("create_and_delete_user")] (UserDb db) =>
             UserController.GetAllUsers(db));
-        userItems.MapGet("/{id}", [Authorize("viewer_user")] (int id, UserDb db) =>
+        userItems.MapGet("/{id}", [Authorize("create_and_delete_user")] (int id, UserDb db) =>
             UserController.GetUser(id, db));
         userItems.MapPost("/", [Authorize("create_and_delete_user")] (MyApi.Model.User.User user, UserDb db) =>
             UserController.CreateUser(user, db));
@@ -24,7 +24,7 @@ public static class UserEndPoints
         // Authenticated user endpoints - use JWT to get current user
         userItems.MapPut("/change-password", [Authorize] (HttpContext context, ChangePasswordRequest request, UserDb db) =>
             UserController.ChangePassword(context, request, db));
-        userItems.MapGet("/me", [Authorize] (HttpContext context, UserDb db) =>
+        userItems.MapGet("/me", [Authorize("viewer_user")] (HttpContext context, UserDb db) =>
             UserController.GetCurrentUser(context, db));
     }
 }

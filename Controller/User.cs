@@ -27,7 +27,7 @@ public class UserController
         return TypedResults.Ok(users);
     }
 
-    // RULE TEST OK
+
     // Get single user without password information
     public static async Task<IResult> GetUser(int id, UserDb db)
     {
@@ -54,9 +54,17 @@ public class UserController
     {
         try
         {
-            db.Users.Add(user);
-            await db.SaveChangesAsync();
-            return TypedResults.Created($"/users/{user.Id}", user);
+            //check name and email is not already in the database
+            if (db.Users.Any(x => x.Name == user.Name || x.Email == user.Email))
+            {
+                return TypedResults.BadRequest(new { message = "Name or email already exists" });
+            }
+            else
+            {
+                db.Users.Add(user);
+                await db.SaveChangesAsync();
+                return TypedResults.Created($"/users/{user.Id}", user);
+            }
         }
         catch (Exception ex)
         {
@@ -76,8 +84,6 @@ public class UserController
         {
             existingUser.Email = user.Email;
         }
-
-
 
         await db.SaveChangesAsync();
         return TypedResults.NoContent();
