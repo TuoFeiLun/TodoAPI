@@ -57,7 +57,7 @@ public class LoginController
             {
                 claims.Add(new Claim("scope", "create_and_delete_user"));
                 claims.Add(new Claim("scope", "update_user"));
-
+                claims.Add(new Claim("scope", "change_user_role"));
 
             }
             else if (existingUser.Role == "editor")

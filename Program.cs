@@ -62,6 +62,11 @@ builder.Services.AddAuthorizationBuilder()
             .RequireRole("admin")
             .RequireClaim("scope", "create_and_delete_user"));
 builder.Services.AddAuthorizationBuilder()
+  .AddPolicy("change_user_role", policy =>
+        policy
+            .RequireRole("admin")
+            .RequireClaim("scope", "change_user_role"));
+builder.Services.AddAuthorizationBuilder()
   .AddPolicy("editor_user", policy =>
         policy
             .RequireRole("admin", "editor")

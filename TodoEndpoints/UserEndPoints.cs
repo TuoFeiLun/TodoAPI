@@ -18,6 +18,8 @@ public static class UserEndPoints
             UserController.CreateUser(user, db));
         userItems.MapPut("/{id}", [Authorize("editor_user")] (int id, MyApi.Model.User.User user, UserDb db) =>
             UserController.UpdateUser(id, user, db));
+        userItems.MapPut("/role/{id}", [Authorize("change_user_role")] (int id, MyApi.Model.User.User user, UserDb db) =>
+            UserController.ChangeUserRole(id, user, db));
         userItems.MapDelete("/{id}", [Authorize("create_and_delete_user")] (int id, UserDb db) =>
             UserController.DeleteUser(id, db));
 

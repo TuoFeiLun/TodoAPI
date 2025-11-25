@@ -99,13 +99,46 @@ public class UserController
         {
             existingUser.Name = user.Name;
         }
-        if (user.Email != null)
+        // cannot change email
+        if (user.Email != null && user.Email != existingUser.Email)
         {
-            existingUser.Email = user.Email;
+            return TypedResults.BadRequest(new { message = "Email cannot be changed" });
         }
-
+        // cannot change isAdmin
+        if (user.IsAdmin != existingUser.IsAdmin)
+        {
+            return TypedResults.BadRequest(new { message = "IsAdmin cannot be changed" });
+        }
+        // cannot change role
+        if (user.Role != null && user.Role != existingUser.Role) // role is lowercase letter. role is string.
+        {
+            return TypedResults.BadRequest(new { message = "Role cannot be changed" });
+        }
+        existingUser.UpdatedAt = DateTime.Now;
         await db.SaveChangesAsync();
         return TypedResults.NoContent();
+    }
+
+    public static async Task<IResult> ChangeUserRole(int id, User user, UserDb db)
+    {
+        var existingUser = await db.Users.FindAsync(id);
+        if (existingUser is null) return TypedResults.NotFound();
+        // check user name and email is already in the database, if not, return bad request
+        if (db.Users.Any(x => x.Name == user.Name && x.Email == user.Email))
+        {
+            if (existingUser.Role == user.Role)
+            {
+                return TypedResults.BadRequest(new { message = "User role is already " + user.Role });
+            }
+            else
+            {
+                existingUser.Role = user.Role;
+                existingUser.UpdatedAt = DateTime.Now;
+            }
+            await db.SaveChangesAsync();
+            return TypedResults.Ok(new { message = "User role changed successfully" });
+        }
+        return TypedResults.BadRequest(new { message = "User name or email not found" });
     }
 
     public static async Task<IResult> DeleteUser(int id, UserDb db)
