@@ -9,6 +9,7 @@ using System.Security.Claims;
 using System.Text;
 using MyApi.Config;
 using MyApi.Controller;
+using MyApi.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<TodoDb>(opt => opt.UseInMemoryDatabase("TodoList"));
@@ -55,37 +56,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Configure Authorization policy
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("create_and_delete_user", policy =>
-        policy
-            .RequireRole("admin")
-            .RequireClaim("scope", "create_and_delete_user"));
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("change_user_role", policy =>
-        policy
-            .RequireRole("admin")
-            .RequireClaim("scope", "change_user_role"));
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("editor_user", policy =>
-        policy
-            .RequireRole("admin", "editor")
-            .RequireClaim("scope", "update_user"));
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("viewer_user", policy =>
-        policy
-            .RequireRole("admin", "editor", "viewer")
-            .RequireClaim("scope", "view_user"));
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("viewer_todoitem", policy =>
-        policy
-            .RequireRole("admin", "editor", "viewer")
-            .RequireClaim("scope", "view_todoitem"));
-builder.Services.AddAuthorizationBuilder()
-  .AddPolicy("crud_todoitem", policy =>
-        policy
-            .RequireRole("editor")
-            .RequireClaim("scope", "crud_todoitem"));
+// not using fluent api
+// MyApi.Authorization.AuthorizePolicies.AddAuthorizationPolicies(builder.Services.AddAuthorizationBuilder());
+
+// Configure Authorization policies - centralized configuration using fluent API
+builder.Services.AddAuthorizationBuilder().AddAuthorizationPolicies();
 
 
 // Configure CORS for frontend (important for SPA)
@@ -164,7 +139,8 @@ app.MapGet("/whoami", (HttpContext context) =>
 
 // Admin-only endpoint
 app.MapGet("/admin", () =>
-    "The /admin endpoint is for admins only. You have the 'admin=true' claim!").RequireAuthorization("create_and_delete_user");
+    "The /admin endpoint is for admins only. You have the 'admin=true' claim!")
+    .RequireAuthorization(MyApi.Authorization.AuthorizePolicies.CreateAndDeleteUser);
 
 // Any authenticated user can access
 app.MapGet("/protected", [Authorize] (HttpContext context) =>

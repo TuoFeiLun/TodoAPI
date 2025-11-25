@@ -99,6 +99,11 @@ public class UserController
         {
             existingUser.Name = user.Name;
         }
+        // cannot change password
+        if (user.Password != null)
+        {
+            return TypedResults.BadRequest(new { message = "Password cannot be changed" });
+        }
         // cannot change email
         if (user.Email != null && user.Email != existingUser.Email)
         {
