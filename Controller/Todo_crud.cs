@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Http.HttpResults;
-using MyApi.Model;      // 导入 Todo 模型
-using MyApi.DTOs;        // 导入 DTO 类
-using MyApi.Database;    // 导入 TodoDb
-
+using MyApi.Model.TodoItem;
+using MyApi.Model.TodoItemDTO;
+using MyApi.Model.TodoAdminDTO;
+using MyApi.Database;
+using System.Security.Claims;
 namespace MyApi.Controller;
 
 
@@ -24,13 +25,21 @@ public class TodoCrud
                 : TypedResults.NotFound();
     }
 
-    public static async Task<IResult> CreateTodoAdmin(TodoAdminDTO todoAdminDTO, TodoDb db)
+    public static async Task<IResult> CreateTodoAdmin(HttpContext context, TodoAdminDTO todoAdminDTO, TodoDb db)
     {
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
         var todoItem = new Todo
         {
             IsComplete = todoAdminDTO.IsComplete,
             Name = todoAdminDTO.Name,
-            Secret = todoAdminDTO.Secret  // 允许设置 Secret
+            Secret = todoAdminDTO.Secret,  // allow to set Secret
+            CreatedByUserId = userId,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
         };
 
         db.Todos.Add(todoItem);
@@ -39,64 +48,117 @@ public class TodoCrud
         todoAdminDTO = new TodoAdminDTO(todoItem);
         return TypedResults.Created($"/admin/todoitems/{todoItem.Id}", todoAdminDTO);
     }
-    public static async Task<IResult> GetAllTodos(TodoDb db)
+    public static async Task<IResult> GetAllTodos(HttpContext context, TodoDb db)
     {
-        return TypedResults.Ok(await db.Todos.Select(x => new TodoItemDTO(x)).ToArrayAsync());
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        return TypedResults.Ok(await db.Todos.Where(t => t.CreatedByUserId == userId).Select(x => new TodoItemDTO(x)).ToArrayAsync());
     }
 
-    public static async Task<IResult> GetCompleteTodos(TodoDb db)
+    // Get completed todos for current user only
+    public static async Task<IResult> GetCompleteTodos(HttpContext context, TodoDb db)
     {
-        return TypedResults.Ok(await db.Todos.Where(t => t.IsComplete).Select(x => new TodoItemDTO(x)).ToListAsync());
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        return TypedResults.Ok(await db.Todos
+            .Where(t => t.IsComplete && t.CreatedByUserId == userId)
+            .Select(x => new TodoItemDTO(x))
+            .ToListAsync());
     }
 
-    public static async Task<IResult> GetTodo(int id, TodoDb db)
+    // Get single todo - only if created by current user
+    public static async Task<IResult> GetTodo(HttpContext context, int id, TodoDb db)
     {
-        return await db.Todos.FindAsync(id)
-            is Todo todo
-                ? TypedResults.Ok(new TodoItemDTO(todo))
-                : TypedResults.NotFound();
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var todo = await db.Todos.FindAsync(id);
+        if (todo is null || todo.CreatedByUserId != userId)
+        {
+            return TypedResults.NotFound();
+        }
+
+        return TypedResults.Ok(new TodoItemDTO(todo));
     }
 
-    public static async Task<IResult> CreateTodo(TodoItemDTO todoItemDTO, TodoDb db)
+    // Create todo with current user as creator
+    public static async Task<IResult> CreateTodo(HttpContext context, TodoItemDTO todoItemDTO, TodoDb db)
     {
+        // Get current user id from JWT claims
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        // Only set foreign key - EF Core handles navigation property automatically
         var todoItem = new Todo
         {
+            Name = todoItemDTO.Name,
             IsComplete = todoItemDTO.IsComplete,
-            Name = todoItemDTO.Name
+            CreatedByUserId = userId,  // Only need to set foreign key, not navigation property
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
         };
 
         db.Todos.Add(todoItem);
         await db.SaveChangesAsync();
 
-        todoItemDTO = new TodoItemDTO(todoItem);
-
-        return TypedResults.Created($"/todoitems/{todoItem.Id}", todoItemDTO);
+        return TypedResults.Created($"/todoitems/{todoItem.Id}", new TodoItemDTO(todoItem));
     }
 
-    public static async Task<IResult> UpdateTodo(int id, TodoItemDTO todoItemDTO, TodoDb db)
+    // Update todo - only if created by current user
+    public static async Task<IResult> UpdateTodo(HttpContext context, int id, TodoItemDTO todoItemDTO, TodoDb db)
     {
-        var todo = await db.Todos.FindAsync(id);
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value; // this id is user id.
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+        {
+            return TypedResults.Unauthorized();
+        }
 
-        if (todo is null) return TypedResults.NotFound();
+        var todo = await db.Todos.FindAsync(id); // this id is todoitem id.
+        if (todo is null || todo.CreatedByUserId != userId) // check if the todoitem is created by the current user.
+        {
+            return TypedResults.NotFound();
+        }
 
         todo.Name = todoItemDTO.Name;
         todo.IsComplete = todoItemDTO.IsComplete;
+        todo.UpdatedAt = DateTime.Now;
 
         await db.SaveChangesAsync();
-
         return TypedResults.NoContent();
     }
 
-    public static async Task<IResult> DeleteTodo(int id, TodoDb db)
+    // Delete todo - only if created by current user
+    public static async Task<IResult> DeleteTodo(HttpContext context, int id, TodoDb db)
     {
-        if (await db.Todos.FindAsync(id) is Todo todo)
+        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
-            db.Todos.Remove(todo);
-            await db.SaveChangesAsync();
-            return TypedResults.NoContent();
+            return TypedResults.Unauthorized();
         }
 
-        return TypedResults.NotFound();
+        var todo = await db.Todos.FindAsync(id);
+        if (todo is null || todo.CreatedByUserId != userId)
+        {
+            return TypedResults.NotFound();
+        }
+
+        db.Todos.Remove(todo);
+        await db.SaveChangesAsync();
+        return TypedResults.NoContent();
     }
 }
 

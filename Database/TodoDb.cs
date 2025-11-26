@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using MyApi.Model;
+using MyApi.Model.TodoItem;
 
 namespace MyApi.Database;
 
