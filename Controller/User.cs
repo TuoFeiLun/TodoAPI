@@ -203,35 +203,39 @@ public class UserController
     // Get current user info from JWT token
     public static async Task<IResult> GetCurrentUser(HttpContext context, UserDb db)
     {
-        // Get user ID from JWT token
-        var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
-        if (userIdClaim == null)
+        ClaimsPrincipal currentUser = context.User;
+
+        // Method 1: Find by Id (using FindAsync) - get Id from JWT claims
+        var userIdClaim = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
         {
             return TypedResults.Unauthorized();
         }
-
-        if (!int.TryParse(userIdClaim.Value, out int userId))
-        {
-            return TypedResults.BadRequest("Invalid user ID in token");
-        }
-
-        // Find user in database
         var user = await db.Users.FindAsync(userId);
+
+        // Method 2: Find by Email (using FirstOrDefaultAsync)
+        // var email = currentUser.FindFirst(ClaimTypes.Email)?.Value;
+        // var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        // Method 3: Find by Name (using FirstOrDefaultAsync)
+        // var name = currentUser.Identity?.Name;
+        // var user = await db.Users.FirstOrDefaultAsync(u => u.Name == name);
+
         if (user is null)
         {
             return TypedResults.NotFound("User not found");
         }
 
-        // Return user info (without password)
         return TypedResults.Ok(new
         {
             id = user.Id,
             name = user.Name,
             email = user.Email,
-            isAdmin = user.IsAdmin,
             role = user.Role,
             createdAt = user.CreatedAt,
-            updatedAt = user.UpdatedAt
+            updatedAt = user.UpdatedAt,
+            isAuthenticated = currentUser.Identity?.IsAuthenticated,
+            authenticationType = currentUser.Identity?.AuthenticationType
         });
     }
 }
