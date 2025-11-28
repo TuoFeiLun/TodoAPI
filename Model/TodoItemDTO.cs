@@ -8,6 +8,7 @@ public class TodoItemDTO
     public string? Name { get; set; }
     public bool IsComplete { get; set; }
     public int CreatedByUserId { get; set; }
+
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 

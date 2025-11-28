@@ -12,7 +12,8 @@ public class Todo
     // Foreign key to User - records who created this todo
     public int CreatedByUserId { get; set; }
 
-    // Audit fields
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+
+    // Audit fields - use UTC time for PostgreSQL
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

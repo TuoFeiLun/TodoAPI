@@ -34,9 +34,8 @@ public class LoginController
 
 
     // Login method - authenticate user with hashed password verification
-    public static async Task<IResult> Login(User user, UserDb db)
+    public static async Task<IResult> Login(User user, AppDbContext db)
     {
-        // Find user by email first
         var existingUser = await db.Users
             .Where(u => u.Email == user.Email)
             .FirstOrDefaultAsync();

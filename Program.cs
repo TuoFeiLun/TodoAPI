@@ -12,8 +12,13 @@ using MyApi.Controller;
 using MyApi.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddDbContext<TodoDb>(opt => opt.UseInMemoryDatabase("TodoList"));
-builder.Services.AddDbContext<UserDb>(opt => opt.UseInMemoryDatabase("UserList"));
+
+// Configure PostgreSQL database connection
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Host=localhost;Database=todoapi;Username=postgres;Password=postgres";
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseNpgsql(connectionString));
+
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 // Add global exception handler
@@ -78,24 +83,24 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 
-// Seed test users for development
+// Apply migrations and seed test users for development
 using (var scope = app.Services.CreateScope())
 {
-    var userDb = scope.ServiceProvider.GetRequiredService<UserDb>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    // Ensure database is created
-    userDb.Database.EnsureCreated();
+    // Apply pending migrations
+    db.Database.Migrate();
 
     // Add test users with hashed passwords if they don't exist
-    if (!userDb.Users.Any())
+    if (!db.Users.Any())
     {
-        userDb.Users.AddRange(
+        db.Users.AddRange(
             new MyApi.Model.User.User("Admin", MyApi.Services.PasswordHashService.HashPassword("Admin123!"), "admin@test.com", "admin", true),
             new MyApi.Model.User.User("Regular", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user@test.com", "editor", false),
             new MyApi.Model.User.User("Regular2", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user2@test.com", "editor", false),
             new MyApi.Model.User.User("Test", MyApi.Services.PasswordHashService.HashPassword("Test123!"), "test@test.com", "viewer", false)
         );
-        userDb.SaveChanges();
+        db.SaveChanges();
     }
 }
 
@@ -147,7 +152,7 @@ app.MapGet("/admin", () =>
 app.MapGet("/protected", [Authorize] (HttpContext context) =>
     $"Hello {context.User.Identity?.Name}, you are authenticated!");
 
-app.MapGet("/", () => TypedResults.Ok(new { message = "Hello World !" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") }));
+app.MapGet("/", () => TypedResults.Ok(new { message = "Hello World! " + DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss") + " UTC" }));
 app.MapGet("/hello", () => "Hello named route")
    .WithName("hi");
 

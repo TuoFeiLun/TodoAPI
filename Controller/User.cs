@@ -6,13 +6,13 @@ using MyApi.Database;
 using System.Security.Claims;
 using MyApi.Model.ChangePasswordRequest;
 using MyApi.Services;
+
 namespace MyApi.Controller;
 
 public class UserController
 {
-    // RULE TEST OK
     // Get all users without password information
-    public static async Task<IResult> GetAllUsers(UserDb db)
+    public static async Task<IResult> GetAllUsers(AppDbContext db)
     {
         var users = await db.Users.Select(x => new UserResponseDto
         {
@@ -30,7 +30,7 @@ public class UserController
 
 
     // Get single user without password information
-    public static async Task<IResult> GetUser(int id, UserDb db)
+    public static async Task<IResult> GetUser(int id, AppDbContext db)
     {
         var user = await db.Users.FindAsync(id);
         if (user is null)
@@ -52,8 +52,8 @@ public class UserController
         return TypedResults.Ok(userDto);
     }
 
-    // Create new user with hashed password - never store plain text passwords
-    public static async Task<IResult> CreateUser(User user, UserDb db)
+    // Create new user with hashed password
+    public static async Task<IResult> CreateUser(User user, AppDbContext db)
     {
         try
         {
@@ -63,10 +63,10 @@ public class UserController
                 return TypedResults.BadRequest(new { message = "Name or email already exists" });
             }
 
-            // Hash the password before saving - security best practice
+            // Hash the password before saving
             user.Password = PasswordHashService.HashPassword(user.Password);
-            user.CreatedAt = DateTime.Now;
-            user.UpdatedAt = DateTime.Now;
+            user.CreatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.UtcNow;
 
             db.Users.Add(user);
             await db.SaveChangesAsync();
@@ -91,7 +91,7 @@ public class UserController
             return TypedResults.BadRequest(new { message = "Error creating user" });
         }
     }
-    public static async Task<IResult> UpdateUser(int id, User user, UserDb db)
+    public static async Task<IResult> UpdateUser(int id, User user, AppDbContext db)
     {
         var existingUser = await db.Users.FindAsync(id);
         if (existingUser is null) return TypedResults.NotFound();
@@ -115,20 +115,19 @@ public class UserController
             return TypedResults.BadRequest(new { message = "IsAdmin cannot be changed" });
         }
         // cannot change role
-        if (user.Role != null && user.Role != existingUser.Role) // role is lowercase letter. role is string.
+        if (user.Role != null && user.Role != existingUser.Role)
         {
             return TypedResults.BadRequest(new { message = "Role cannot be changed" });
         }
-        existingUser.UpdatedAt = DateTime.Now;
+        existingUser.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
         return TypedResults.NoContent();
     }
 
-    public static async Task<IResult> ChangeUserRole(int id, User user, UserDb db)
+    public static async Task<IResult> ChangeUserRole(int id, User user, AppDbContext db)
     {
         var existingUser = await db.Users.FindAsync(id);
         if (existingUser is null) return TypedResults.NotFound();
-        // check user name and email is already in the database, if not, return bad request
         if (db.Users.Any(x => x.Name == user.Name && x.Email == user.Email))
         {
             if (existingUser.Role == user.Role)
@@ -138,7 +137,7 @@ public class UserController
             else
             {
                 existingUser.Role = user.Role;
-                existingUser.UpdatedAt = DateTime.Now;
+                existingUser.UpdatedAt = DateTime.UtcNow;
             }
             await db.SaveChangesAsync();
             return TypedResults.Ok(new { message = "User role changed successfully" });
@@ -146,7 +145,7 @@ public class UserController
         return TypedResults.BadRequest(new { message = "User name or email not found" });
     }
 
-    public static async Task<IResult> DeleteUser(int id, UserDb db)
+    public static async Task<IResult> DeleteUser(int id, AppDbContext db)
     {
         if (await db.Users.FindAsync(id) is User user)
         {
@@ -158,10 +157,9 @@ public class UserController
     }
 
 
-    // Change password using JWT authentication - more secure approach
-    public static async Task<IResult> ChangePassword(HttpContext context, ChangePasswordRequest request, UserDb db)
+    // Change password using JWT authentication
+    public static async Task<IResult> ChangePassword(HttpContext context, ChangePasswordRequest request, AppDbContext db)
     {
-        // Get user ID from JWT token
         var userIdClaim = context.User.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim == null)
         {
@@ -173,22 +171,19 @@ public class UserController
             return TypedResults.BadRequest("Invalid user ID in token");
         }
 
-        // Find user in database by ID from JWT
         var user = await db.Users.FindAsync(userId);
         if (user is null)
         {
             return TypedResults.NotFound("User not found");
         }
 
-        // Verify old password using BCrypt hash comparison
         if (!PasswordHashService.VerifyPassword(request.OldPassword, user.Password))
         {
             return TypedResults.UnprocessableEntity(new { message = "Old password is incorrect" });
         }
 
-        // Hash new password and update
         user.Password = PasswordHashService.HashPassword(request.NewPassword);
-        user.UpdatedAt = DateTime.Now;
+        user.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
         return TypedResults.Ok(new
@@ -199,9 +194,8 @@ public class UserController
         });
     }
 
-
     // Get current user info from JWT token
-    public static async Task<IResult> GetCurrentUser(HttpContext context, UserDb db)
+    public static async Task<IResult> GetCurrentUser(HttpContext context, AppDbContext db)
     {
         ClaimsPrincipal currentUser = context.User;
 

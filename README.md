@@ -13,17 +13,51 @@ A RESTful API built with ASP.NET Core 8 Minimal API, featuring JWT authenticatio
 ## Tech Stack
 
 - .NET 8 Minimal API
-- Entity Framework Core (InMemory Database)
+- Entity Framework Core with PostgreSQL
 - JWT Bearer Authentication
 - BCrypt.Net for password hashing
 - NSwag for OpenAPI documentation
 
+## Prerequisites
+
+- .NET 8 SDK
+- PostgreSQL database server
+
 ## Getting Started
+
+### 1. Configure Database Connection
+
+Update `appsettings.json` with your PostgreSQL connection string:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Database=todoapi;Username=postgres;Password=postgres"
+  }
+}
+```
+
+### 2. Run the Application
 
 ```bash
 cd MyApi
 dotnet restore
 dotnet run
+```
+
+The application will automatically apply EF Core migrations on startup.
+
+### EF Core Migrations Commands
+
+```bash
+# Add a new migration
+dotnet ef migrations add MigrationName
+
+# Apply migrations manually
+dotnet ef database update
+
+# Remove last migration
+dotnet ef migrations remove
 ```
 
 The API will be available at:
@@ -97,12 +131,38 @@ MyApi/
 ├── Authorization/       # Authorization policies
 ├── Config/              # JWT configuration
 ├── Controller/          # Business logic
-├── Database/            # DbContext classes
+├── Database/            # AppDbContext for PostgreSQL
 ├── Middleware/          # Global exception handler
+├── Migrations/          # EF Core database migrations
 ├── Model/               # Entity models and DTOs
 ├── Services/            # Password hashing service
 └── TodoEndpoints/       # API endpoint mappings
 ```
+
+## Database Schema
+
+### Users Table
+| Column | Type | Description |
+|--------|------|-------------|
+| Id | int | Primary Key (auto-increment) |
+| Name | varchar(100) | User name |
+| Email | varchar(255) | Unique email |
+| Password | text | BCrypt hashed password |
+| Role | varchar(50) | admin/editor/viewer |
+| IsAdmin | boolean | Admin flag |
+| CreatedAt | timestamp | UTC creation time |
+| UpdatedAt | timestamp | UTC update time |
+
+### Todos Table
+| Column | Type | Description |
+|--------|------|-------------|
+| Id | int | Primary Key (auto-increment) |
+| Name | varchar(500) | Todo name |
+| IsComplete | boolean | Completion status |
+| Secret | text | Admin-only secret |
+| CreatedByUserId | int | Foreign Key to Users |
+| CreatedAt | timestamp | UTC creation time |
+| UpdatedAt | timestamp | UTC update time |
 
 ## License
 
