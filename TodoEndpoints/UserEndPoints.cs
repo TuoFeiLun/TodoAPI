@@ -3,6 +3,7 @@ using MyApi.Controller;
 using MyApi.Database;
 using MyApi.Model.ChangePasswordRequest;
 using static MyApi.Authorization.AuthorizePolicies;
+using System.Text.Json;
 
 namespace MinAPISeparateFile;
 
@@ -19,10 +20,10 @@ public static class UserEndPoints
             UserController.GetUser(id, db));
         userItems.MapPost("/", [Authorize(CreateAndDeleteUser)] (MyApi.Model.User.User user, AppDbContext db) =>
             UserController.CreateUser(user, db));
-        userItems.MapPut("/{id}", [Authorize(EditorUser)] (int id, MyApi.Model.User.User user, AppDbContext db) =>
-            UserController.UpdateUser(id, user, db));
-        userItems.MapPut("/role/{id}", [Authorize(ChangeUserRole)] (int id, MyApi.Model.User.User user, AppDbContext db) =>
-            UserController.ChangeUserRole(id, user, db));
+        userItems.MapPatch("/{id}", [Authorize(EditorUser)] (int id, JsonElement patchData, AppDbContext db) =>
+            UserController.UpdateUser(id, patchData, db));
+        userItems.MapPatch("/role/{id}", [Authorize(ChangeUserRole)] (int id, JsonElement patchData, AppDbContext db) =>
+            UserController.ChangeUserRole(id, patchData, db));
         userItems.MapDelete("/{id}", [Authorize(CreateAndDeleteUser)] (int id, AppDbContext db) =>
             UserController.DeleteUser(id, db));
 

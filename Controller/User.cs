@@ -6,6 +6,7 @@ using MyApi.Database;
 using System.Security.Claims;
 using MyApi.Model.ChangePasswordRequest;
 using MyApi.Services;
+using System.Text.Json;
 
 namespace MyApi.Controller;
 
@@ -91,58 +92,91 @@ public class UserController
             return TypedResults.BadRequest(new { message = "Error creating user" });
         }
     }
-    public static async Task<IResult> UpdateUser(int id, User user, AppDbContext db)
+    public static async Task<IResult> UpdateUser(int id, JsonElement patchData, AppDbContext db)
     {
         var existingUser = await db.Users.FindAsync(id);
         if (existingUser is null) return TypedResults.NotFound();
-        if (user.Name != null)
+
+        // Only update fields that are present in the request
+        if (patchData.TryGetProperty("name", out JsonElement nameElement))
         {
-            existingUser.Name = user.Name;
+            existingUser.Name = nameElement.GetString() ?? existingUser.Name;
         }
-        // cannot change password
-        if (user.Password != null)
+
+        // Cannot change password via this endpoint
+        if (patchData.TryGetProperty("password", out _))
         {
-            return TypedResults.BadRequest(new { message = "Password cannot be changed" });
+            return TypedResults.BadRequest(new { message = "Password cannot be changed via this endpoint. Use /change-password instead." });
         }
-        // cannot change email
-        if (user.Email != null && user.Email != existingUser.Email)
+
+        // Cannot change email
+        if (patchData.TryGetProperty("email", out _))
         {
             return TypedResults.BadRequest(new { message = "Email cannot be changed" });
         }
-        // cannot change isAdmin
-        if (user.IsAdmin != existingUser.IsAdmin)
+
+        // Cannot change isAdmin
+        if (patchData.TryGetProperty("isAdmin", out _))
         {
-            return TypedResults.BadRequest(new { message = "IsAdmin cannot be changed" });
+            return TypedResults.BadRequest(new { message = "IsAdmin cannot be changed via this endpoint" });
         }
-        // cannot change role
-        if (user.Role != null && user.Role != existingUser.Role)
+
+        // Cannot change role via this endpoint
+        if (patchData.TryGetProperty("role", out _))
         {
-            return TypedResults.BadRequest(new { message = "Role cannot be changed" });
+            return TypedResults.BadRequest(new { message = "Role cannot be changed via this endpoint. Use /role/{id} instead." });
         }
+
         existingUser.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
-        return TypedResults.NoContent();
+
+        return TypedResults.Ok(new UserResponseDto
+        {
+            Id = existingUser.Id,
+            Name = existingUser.Name,
+            Email = existingUser.Email,
+            Role = existingUser.Role,
+            IsAdmin = existingUser.IsAdmin,
+            CreatedAt = existingUser.CreatedAt,
+            UpdatedAt = existingUser.UpdatedAt
+        });
     }
 
-    public static async Task<IResult> ChangeUserRole(int id, User user, AppDbContext db)
+    public static async Task<IResult> ChangeUserRole(int id, JsonElement patchData, AppDbContext db)
     {
         var existingUser = await db.Users.FindAsync(id);
         if (existingUser is null) return TypedResults.NotFound();
-        if (db.Users.Any(x => x.Name == user.Name && x.Email == user.Email))
+
+        if (!patchData.TryGetProperty("role", out JsonElement roleElement))
         {
-            if (existingUser.Role == user.Role)
-            {
-                return TypedResults.BadRequest(new { message = "User role is already " + user.Role });
-            }
-            else
-            {
-                existingUser.Role = user.Role;
-                existingUser.UpdatedAt = DateTime.UtcNow;
-            }
-            await db.SaveChangesAsync();
-            return TypedResults.Ok(new { message = "User role changed successfully" });
+            return TypedResults.BadRequest(new { message = "Role field is required" });
         }
-        return TypedResults.BadRequest(new { message = "User name or email not found" });
+
+        var newRole = roleElement.GetString();
+        if (string.IsNullOrEmpty(newRole))
+        {
+            return TypedResults.BadRequest(new { message = "Role cannot be empty" });
+        }
+
+        if (existingUser.Role == newRole)
+        {
+            return TypedResults.BadRequest(new { message = $"User role is already {newRole}" });
+        }
+
+        existingUser.Role = newRole;
+        existingUser.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return TypedResults.Ok(new UserResponseDto
+        {
+            Id = existingUser.Id,
+            Name = existingUser.Name,
+            Email = existingUser.Email,
+            Role = existingUser.Role,
+            IsAdmin = existingUser.IsAdmin,
+            CreatedAt = existingUser.CreatedAt,
+            UpdatedAt = existingUser.UpdatedAt
+        });
     }
 
     public static async Task<IResult> DeleteUser(int id, AppDbContext db)

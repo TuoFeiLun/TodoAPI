@@ -4,6 +4,7 @@ using MyApi.Database;
 using MyApi.Model.TodoItemDTO;
 using MyApi.Model.TodoAdminDTO;
 using static MyApi.Authorization.AuthorizePolicies;
+using System.Text.Json;
 
 namespace MinAPISeparateFile;
 
@@ -22,8 +23,8 @@ public static class TodoEndpoints
             TodoCrud.GetTodo(context, id, db));
         todoItems.MapPost("/", [Authorize(CrudTodoItem)] (HttpContext context, TodoItemDTO todoItemDTO, AppDbContext db) =>
             TodoCrud.CreateTodo(context, todoItemDTO, db));
-        todoItems.MapPut("/{id}", [Authorize(CrudTodoItem)] (HttpContext context, int id, TodoItemDTO todoItemDTO, AppDbContext db) =>
-            TodoCrud.UpdateTodo(context, id, todoItemDTO, db));
+        todoItems.MapPatch("/{id}", [Authorize(CrudTodoItem)] (HttpContext context, int id, JsonElement patchData, AppDbContext db) =>
+            TodoCrud.UpdateTodo(context, id, patchData, db));
         todoItems.MapDelete("/{id}", [Authorize(CrudTodoItem)] (HttpContext context, int id, AppDbContext db) =>
             TodoCrud.DeleteTodo(context, id, db));
 
