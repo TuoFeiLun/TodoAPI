@@ -5,9 +5,10 @@ A RESTful API built with ASP.NET Core 8 Minimal API, featuring JWT authenticatio
 ## Features
 
 - **JWT Authentication** - Secure token-based authentication
-- **Role-Based Authorization** - Admin, Editor, Viewer roles with different permissions
+- **Role-Based Authorization** - Admin, Editor, Viewer roles with different permissions (using `UserRole` enum)
 - **Password Hashing** - BCrypt encryption for secure password storage
 - **User-Todo Relationship** - Each todo is linked to its creator
+- **Partial Updates (PATCH)** - Update only specific fields without data loss
 - **Swagger/OpenAPI** - Interactive API documentation
 
 ## Tech Stack
@@ -45,8 +46,6 @@ dotnet restore
 dotnet run
 ```
 
-The application will automatically apply EF Core migrations on startup.
-
 ### EF Core Migrations Commands
 
 ```bash
@@ -56,7 +55,7 @@ dotnet ef migrations add MigrationName
 # Apply migrations manually
 dotnet ef database update
 
-# Remove last migration
+# Remove last migration (if not applied)
 dotnet ef migrations remove
 ```
 
@@ -79,9 +78,9 @@ Swagger UI: http://localhost:3000/swagger
 | GET | `/users` | Get all users |
 | GET | `/users/{id}` | Get user by ID |
 | POST | `/users` | Create new user |
-| PUT | `/users/{id}` | Update user |
+| PATCH | `/users/{id}` | Partial update user (name only) |
 | DELETE | `/users/{id}` | Delete user |
-| PUT | `/users/role/{id}` | Change user role |
+| PATCH | `/users/role/{id}` | Change user role |
 
 ### Users (Authenticated)
 | Method | Endpoint | Description |
@@ -93,9 +92,10 @@ Swagger UI: http://localhost:3000/swagger
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/todoitems` | Get user's todos |
+| GET | `/todoitems/complete` | Get completed todos |
 | GET | `/todoitems/{id}` | Get todo by ID |
 | POST | `/todoitems` | Create todo |
-| PUT | `/todoitems/{id}` | Update todo |
+| PATCH | `/todoitems/{id}` | Partial update todo |
 | DELETE | `/todoitems/{id}` | Delete todo |
 
 ### Todos (Admin)
@@ -109,20 +109,39 @@ Swagger UI: http://localhost:3000/swagger
 
 | Email | Password | Role |
 |-------|----------|------|
-| admin@test.com | Admin123! | admin |
-| user@test.com | User123! | editor |
-| test@test.com | Test123! | viewer |
+| admin@test.com | Admin123! | Admin |
+| user@test.com | User123! | Editor |
+| test@test.com | Test123! | Viewer |
+
+## User Roles
+
+Roles are defined as an enum (`UserRole`) for type safety:
+
+```csharp
+public enum UserRole
+{
+    Admin,
+    Editor,
+    Viewer
+}
+```
+
+| Role | Permissions |
+|------|-------------|
+| Admin | Full access to all endpoints, user management |
+| Editor | CRUD operations on own todos, update own profile |
+| Viewer | Read-only access to own todos and profile |
 
 ## Authorization Policies
 
 | Policy | Roles | Description |
 |--------|-------|-------------|
-| `create_and_delete_user` | admin | Manage users |
-| `change_user_role` | admin | Change user roles |
-| `editor_user` | admin, editor | Edit users |
-| `viewer_user` | admin, editor, viewer | View users |
-| `viewer_todoitem` | admin, editor, viewer | View todos |
-| `crud_todoitem` | editor | Create/Update/Delete todos |
+| `create_and_delete_user` | Admin | Manage users |
+| `change_user_role` | Admin | Change user roles |
+| `editor_user` | Admin, Editor | Edit users |
+| `viewer_user` | Admin, Editor, Viewer | View users |
+| `viewer_todoitem` | Admin, Editor, Viewer | View todos |
+| `crud_todoitem` | Editor | Create/Update/Delete todos |
 
 ## Project Structure
 
@@ -134,7 +153,7 @@ MyApi/
 ├── Database/            # AppDbContext for PostgreSQL
 ├── Middleware/          # Global exception handler
 ├── Migrations/          # EF Core database migrations
-├── Model/               # Entity models and DTOs
+├── Model/               # Entity models, DTOs, and UserRole enum
 ├── Services/            # Password hashing service
 └── TodoEndpoints/       # API endpoint mappings
 ```
@@ -148,7 +167,7 @@ MyApi/
 | Name | varchar(100) | User name |
 | Email | varchar(255) | Unique email |
 | Password | text | BCrypt hashed password |
-| Role | varchar(50) | admin/editor/viewer |
+| Role | int | UserRole enum (0=Admin, 1=Editor, 2=Viewer) |
 | IsAdmin | boolean | Admin flag |
 | CreatedAt | timestamp | UTC creation time |
 | UpdatedAt | timestamp | UTC update time |
@@ -163,6 +182,35 @@ MyApi/
 | CreatedByUserId | int | Foreign Key to Users |
 | CreatedAt | timestamp | UTC creation time |
 | UpdatedAt | timestamp | UTC update time |
+
+## Migration Troubleshooting
+
+### Role Column Type Change (String to Enum)
+
+If you encounter this error when migrating from string-based Role to enum:
+
+```
+column "Role" cannot be cast automatically to type integer
+```
+
+**Solution**: Create a custom migration with explicit USING clause:
+
+```sql
+-- In the migration Up() method, replace the auto-generated ALTER with:
+ALTER TABLE "Users" ALTER COLUMN "Role" TYPE integer 
+USING CASE 
+    WHEN "Role" = 'admin' THEN 0 
+    WHEN "Role" = 'editor' THEN 1 
+    WHEN "Role" = 'viewer' THEN 2 
+    ELSE 2 
+END;
+```
+
+Or drop and recreate the database for development:
+```bash
+dotnet ef database drop
+dotnet ef database update
+```
 
 ## License
 
