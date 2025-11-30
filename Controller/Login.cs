@@ -48,18 +48,17 @@ public class LoginController
                 new Claim(ClaimTypes.Name, existingUser.Name),
                 new Claim(ClaimTypes.Email, existingUser.Email ?? ""),
                 new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString()),
-                new Claim(ClaimTypes.Role, existingUser.Role),
+                new Claim(ClaimTypes.Role, existingUser.Role.ToString()),  // Convert enum to string
                 new Claim("scope", "view_user"),
                 new Claim("scope", "view_todoitem")
             };
-            if (existingUser.Role == "admin")
+            if (existingUser.Role == UserRole.Admin)
             {
                 claims.Add(new Claim("scope", "create_and_delete_user"));
                 claims.Add(new Claim("scope", "update_user"));
                 claims.Add(new Claim("scope", "change_user_role"));
-
             }
-            else if (existingUser.Role == "editor")
+            else if (existingUser.Role == UserRole.Editor)
             {
                 claims.Add(new Claim("scope", "update_user"));
                 claims.Add(new Claim("scope", "crud_todoitem"));

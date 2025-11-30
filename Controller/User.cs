@@ -157,13 +157,22 @@ public class UserController
         {
             return TypedResults.BadRequest(new { message = "Role cannot be empty" });
         }
+        // Parse string to UserRole enum (case-insensitive)
+        if (!Enum.TryParse<UserRole>(newRole, ignoreCase: true, out UserRole newRoleEnum))
+        {
+            return TypedResults.BadRequest(new
+            {
+                message = $"Invalid role: '{newRole}'",
+                allowedValues = Enum.GetNames<UserRole>()  // ["Admin", "Editor", "Viewer"]
+            });
+        }
 
-        if (existingUser.Role == newRole)
+        if (existingUser.Role == newRoleEnum)
         {
             return TypedResults.BadRequest(new { message = $"User role is already {newRole}" });
         }
 
-        existingUser.Role = newRole;
+        existingUser.Role = newRoleEnum;
         existingUser.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
 

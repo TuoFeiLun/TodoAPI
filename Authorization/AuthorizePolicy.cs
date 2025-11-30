@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using MyApi.Model.User;
 
 namespace MyApi.Authorization;
 
@@ -14,33 +15,38 @@ public static class AuthorizePolicies
     public const string ViewerTodoItem = "viewer_todoitem";
     public const string CrudTodoItem = "crud_todoitem";
 
+    // Role names from UserRole enum for consistency
+    private static readonly string Admin = nameof(UserRole.Admin);
+    private static readonly string Editor = nameof(UserRole.Editor);
+    private static readonly string Viewer = nameof(UserRole.Viewer);
+
     // Configure all authorization policies - extension method for fluent API
     public static AuthorizationBuilder AddAuthorizationPolicies(this AuthorizationBuilder builder)
     {
         // User management policies
         builder.AddPolicy(CreateAndDeleteUser, policy =>
-            policy.RequireRole("admin")
+            policy.RequireRole(Admin)
                   .RequireClaim("scope", CreateAndDeleteUser));
 
         builder.AddPolicy(ChangeUserRole, policy =>
-            policy.RequireRole("admin")
+            policy.RequireRole(Admin)
                   .RequireClaim("scope", ChangeUserRole));
 
         builder.AddPolicy(EditorUser, policy =>
-            policy.RequireRole("admin", "editor")
+            policy.RequireRole(Admin, Editor)
                   .RequireClaim("scope", "update_user"));
 
         builder.AddPolicy(ViewerUser, policy =>
-            policy.RequireRole("admin", "editor", "viewer")
+            policy.RequireRole(Admin, Editor, Viewer)
                   .RequireClaim("scope", "view_user"));
 
         // Todo item policies
         builder.AddPolicy(ViewerTodoItem, policy =>
-            policy.RequireRole("admin", "editor", "viewer")
+            policy.RequireRole(Admin, Editor, Viewer)
                   .RequireClaim("scope", "view_todoitem"));
 
         builder.AddPolicy(CrudTodoItem, policy =>
-            policy.RequireRole("editor")
+            policy.RequireRole(Editor)
                   .RequireClaim("scope", "crud_todoitem"));
 
         return builder;

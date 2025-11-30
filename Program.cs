@@ -10,6 +10,7 @@ using System.Text;
 using MyApi.Config;
 using MyApi.Controller;
 using MyApi.Authorization;
+using MyApi.Model.User;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,10 +96,10 @@ using (var scope = app.Services.CreateScope())
     if (!db.Users.Any())
     {
         db.Users.AddRange(
-            new MyApi.Model.User.User("Admin", MyApi.Services.PasswordHashService.HashPassword("Admin123!"), "admin@test.com", "admin", true),
-            new MyApi.Model.User.User("Regular", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user@test.com", "editor", false),
-            new MyApi.Model.User.User("Regular2", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user2@test.com", "editor", false),
-            new MyApi.Model.User.User("Test", MyApi.Services.PasswordHashService.HashPassword("Test123!"), "test@test.com", "viewer", false)
+            new MyApi.Model.User.User("Admin", MyApi.Services.PasswordHashService.HashPassword("Admin123!"), "admin@test.com", UserRole.Admin, true),
+            new MyApi.Model.User.User("Regular", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user@test.com", UserRole.Editor, false),
+            new MyApi.Model.User.User("Regular2", MyApi.Services.PasswordHashService.HashPassword("User123!"), "user2@test.com", UserRole.Editor, false),
+            new MyApi.Model.User.User("Test", MyApi.Services.PasswordHashService.HashPassword("Test123!"), "test@test.com", UserRole.Viewer, false)
         );
         db.SaveChanges();
     }
