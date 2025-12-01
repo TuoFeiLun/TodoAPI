@@ -64,6 +64,12 @@ public class UserController
                 return TypedResults.BadRequest(new { message = "Name or email already exists" });
             }
 
+            // checke password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number
+            if (user.Password.Length < 6 || !user.Password.Any(char.IsUpper) || !user.Password.Any(char.IsLower) || !user.Password.Any(char.IsDigit))
+            {
+                return TypedResults.BadRequest(new { message = "Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number" });
+            }
+
             // Hash the password before saving
             user.Password = PasswordHashService.HashPassword(user.Password);
             user.CreatedAt = DateTime.UtcNow;
