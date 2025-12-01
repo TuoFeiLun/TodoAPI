@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using MyApi.Controller;
 using MyApi.Database;
 using MyApi.Model.ChangePasswordRequest;
+using MyApi.Filters.EndpointFilters;
 using static MyApi.Authorization.AuthorizePolicies;
 using System.Text.Json;
 
@@ -19,7 +20,7 @@ public static class UserEndPoints
         userItems.MapGet("/{id}", [Authorize(CreateAndDeleteUser)] (int id, AppDbContext db) =>
             UserController.GetUser(id, db));
         userItems.MapPost("/", [Authorize(CreateAndDeleteUser)] (MyApi.Model.User.User user, AppDbContext db) =>
-            UserController.CreateUser(user, db));
+            UserController.CreateUser(user, db)).AddEndpointFilter<UserNameToUpperFilter>();
         userItems.MapPatch("/{id}", [Authorize(EditorUser)] (int id, JsonElement patchData, AppDbContext db) =>
             UserController.UpdateUser(id, patchData, db));
         userItems.MapPatch("/role/{id}", [Authorize(ChangeUserRole)] (int id, JsonElement patchData, AppDbContext db) =>

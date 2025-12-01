@@ -30,8 +30,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.WriteIndented = true;
     options.SerializerOptions.IncludeFields = true;
-    options.SerializerOptions.AllowTrailingCommas = false;  // Allow trailing commas in JSON
-    options.SerializerOptions.ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip;  // Allow comments in JSON
+    options.SerializerOptions.AllowTrailingCommas = false;
+    options.SerializerOptions.ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip;
+    options.SerializerOptions.PropertyNameCaseInsensitive = true;  // Allow case-insensitive property names
 });
 
 builder.Services.AddEndpointsApiExplorer();

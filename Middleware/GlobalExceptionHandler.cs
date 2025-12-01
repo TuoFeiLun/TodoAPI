@@ -84,7 +84,6 @@ public class GlobalExceptionHandler : IExceptionHandler
         return true; // Exception handled
     }
 
-    // RULE TEST OK
     // Convert technical JSON errors to user-friendly messages
     private static string GetFriendlyJsonError(string technicalMessage)
     {
@@ -106,6 +105,18 @@ public class GlobalExceptionHandler : IExceptionHandler
         if (technicalMessage.Contains("expected", StringComparison.OrdinalIgnoreCase))
         {
             return "JSON structure is incorrect. Please verify the format matches the expected schema.";
+        }
+
+        // Enum conversion errors (e.g., invalid role value)
+        if (technicalMessage.Contains("could not be converted to") && technicalMessage.Contains("UserRole"))
+        {
+            return "Invalid role value. Allowed values are: Admin, Editor, Viewer (case-insensitive).";
+        }
+
+        // Generic enum conversion error
+        if (technicalMessage.Contains("could not be converted to"))
+        {
+            return "Invalid value for an enum field. Please check the allowed values.";
         }
 
         // Default friendly message

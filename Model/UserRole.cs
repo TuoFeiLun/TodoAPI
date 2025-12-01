@@ -1,8 +1,11 @@
 using System.Text.Json.Serialization;
 namespace MyApi.Model.User;
 
-
-[JsonConverter(typeof(JsonStringEnumConverter))]
+/// <summary>
+/// User roles for authorization. Use JsonNamingPolicy.CamelCase for case-insensitive matching.
+/// Accepts: "admin", "Admin", "editor", "Editor", "viewer", "Viewer"
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<UserRole>))]
 public enum UserRole
 {
     Admin,

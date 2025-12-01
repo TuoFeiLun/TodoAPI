@@ -59,7 +59,8 @@ public class UserController
         try
         {
             // Check name and email is not already in the database
-            if (db.Users.Any(x => x.Name == user.Name || x.Email == user.Email))
+            // You dont need to use Toupper (but still use ToUpper()), because have used  UserNameToUpperFilter to convert user name to uppercase
+            if (db.Users.Any(x => x.Name.ToUpper() == user.Name.ToUpper() || x.Email == user.Email))
             {
                 return TypedResults.BadRequest(new { message = "Name or email already exists" });
             }
