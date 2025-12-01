@@ -3,7 +3,6 @@ using System.Text.Json;
 
 namespace MyApi.Middleware;
 
-// RULE TEST OK
 // Global exception handler for catching all unhandled exceptions
 public class GlobalExceptionHandler : IExceptionHandler
 {
@@ -31,10 +30,11 @@ public class GlobalExceptionHandler : IExceptionHandler
             ),
 
             // Bad HTTP request errors (includes JSON deserialization)
+            // Check InnerException for detailed error message (e.g., enum conversion errors)
             Microsoft.AspNetCore.Http.BadHttpRequestException badHttpEx => (
                 StatusCodes.Status400BadRequest,
                 "Bad request format",
-                GetFriendlyJsonError(badHttpEx.Message)
+                GetFriendlyJsonError(badHttpEx.InnerException?.Message ?? badHttpEx.Message)
             ),
 
             // Validation errors
