@@ -13,8 +13,6 @@ public class User
 
     // Role must be 'admin', 'editor', or 'viewer'. this method is triggered in ModelBinding when  [MapPost("/users", (User user)] using [FromBody] or [FromForm] attributes.
     // if you use jsonelement to bind the data by using patch data, you need to check the body property.
-
-    //[AllowedValues(UserRole.Admin, UserRole.Editor, UserRole.Viewer, ErrorMessage = "Role must be 'admin', 'editor', or 'viewer'")]
     public UserRole Role { get; set; }
 
     // Parameterless constructor for EF Core
